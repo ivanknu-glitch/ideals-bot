@@ -337,17 +337,16 @@ app.post('/new-booking', (req, res) => {
   const clientType = booking.clientType === 'new' ? '🆕 Новий клієнт (з передоплатою)' : '🌸 Постійний клієнт';
 
   bot.sendMessage(MASTER_ID,
-    `🌸 *Новий запис!*\n\n` +
+    `🌸 Новий запис!\n\n` +
     `👤 ${booking.name}\n` +
     `📱 ${booking.phone}\n` +
     `💅 ${booking.services}\n` +
     `📅 ${fmtDate(booking.date)}, ${booking.time}\n` +
     `⏱ ${booking.duration}\n` +
-    `💰 ${booking.price} ₴\n` +
+    `💰 ${booking.price} грн\n` +
     `${clientType}\n` +
-    `🔑 Код: *${booking.code}*`,
+    `🔑 Код: ${booking.code}`,
     {
-      parse_mode: 'Markdown',
       reply_markup: {
         inline_keyboard: [[
           { text: '✅ Підтвердити', callback_data: `confirm_${booking.id || 'none'}` },
