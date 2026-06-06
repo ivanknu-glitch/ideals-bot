@@ -97,6 +97,10 @@ bot.on('message', async (msg) => {
   const text = msg.text;
   if (!text || text.startsWith('/')) return;
 
+  // Перевіряємо кнопки меню
+  const isMenuButton = await handleMenuButton(msg);
+  if (isMenuButton) return;
+
   const state = userState[chatId];
 
   if (state && state.step === 'waiting_code') {
@@ -222,47 +226,62 @@ function showClientMenu(chatId, client) {
   });
 }
 
-bot.onText(/📅 Мої записи/, async (msg) => {
+// Обробка кнопок меню через текст повідомлення
+async function handleMenuButton(msg) {
   const chatId = msg.chat.id;
-  const client = await findClient(chatId);
-  if (!client) {
-    bot.sendMessage(chatId, `Введіть ваш код IDEALS-XXXX щоб прив'язати запис`);
-    userState[chatId] = { step: 'waiting_code' };
-    return;
-  }
-  bot.sendMessage(chatId, `📅 Для перегляду записів зайдіть на сайт:\nhttps://ideals-nail.web.app`);
-});
+  const text = msg.text || '';
 
-bot.onText(/🔄 Перенести запис/, async (msg) => {
-  const chatId = msg.chat.id;
-  const client = await findClient(chatId);
-  if (!client) { bot.sendMessage(chatId, 'Спочатку введіть ваш код IDEALS-XXXX'); return; }
-  userState[chatId] = { step: 'reschedule_date', data: {} };
-  bot.sendMessage(chatId, `📅 Введіть бажану нову дату (наприклад: *15 липня*)`, { parse_mode: 'Markdown' });
-});
-
-bot.onText(/❌ Скасувати запис/, async (msg) => {
-  const chatId = msg.chat.id;
-  const client = await findClient(chatId);
-  if (!client) {
-    bot.sendMessage(chatId, `Введіть ваш код IDEALS-XXXX щоб прив'язати запис`);
-    userState[chatId] = { step: 'waiting_code' };
-    return;
-  }
-  bot.sendMessage(chatId, `❌ Скасувати запис?`, {
-    parse_mode: 'Markdown',
-    reply_markup: {
-      inline_keyboard: [[
-        { text: 'Так, скасувати', callback_data: `cancel_${chatId}` },
-        { text: 'Ні, залишити', callback_data: 'keep' }
-      ]]
+  if (text.includes('Мої записи')) {
+    const client = await findClient(chatId);
+    if (!client) {
+      bot.sendMessage(chatId, 'Введіть ваш код IDEALS-XXXX');
+      userState[chatId] = { step: 'waiting_code' };
+      return true;
     }
-  });
-});
+    bot.sendMessage(chatId, `📅 Для перегляду записів зайдіть на сайт:
+https://ideals-nail.web.app`);
+    return true;
+  }
 
-bot.onText(/📞/, (msg) => {
-  bot.sendMessage(msg.chat.id, `📞 Telegram майстра: @ideals_nail\n\nПишіть якщо є запитання! 🌸`);
-});
+  if (text.includes('Перенести запис')) {
+    const client = await findClient(chatId);
+    if (!client) {
+      bot.sendMessage(chatId, 'Введіть ваш код IDEALS-XXXX');
+      userState[chatId] = { step: 'waiting_code' };
+      return true;
+    }
+    userState[chatId] = { step: 'reschedule_date', data: {} };
+    bot.sendMessage(chatId, `📅 Введіть бажану нову дату (наприклад: 15 липня)`);
+    return true;
+  }
+
+  if (text.includes('Скасувати запис')) {
+    const client = await findClient(chatId);
+    if (!client) {
+      bot.sendMessage(chatId, 'Введіть ваш код IDEALS-XXXX');
+      userState[chatId] = { step: 'waiting_code' };
+      return true;
+    }
+    bot.sendMessage(chatId, `❌ Скасувати запис?`, {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: 'Так, скасувати', callback_data: `cancel_${chatId}` },
+          { text: 'Ні, залишити', callback_data: 'keep' }
+        ]]
+      }
+    });
+    return true;
+  }
+
+  if (text.includes('Зв'язатись') || text.includes('📞')) {
+    bot.sendMessage(chatId, `📞 Telegram майстра: @ideals_nail
+
+Пишіть якщо є запитання! 🌸`);
+    return true;
+  }
+
+  return false;
+}
 
 bot.onText(/\/today/, (msg) => {
   if (msg.chat.id !== MASTER_ID) return;
