@@ -164,7 +164,7 @@ async function linkClient(chatId, code, msg) {
       parse_mode: 'Markdown',
       reply_markup: {
         keyboard: [
-          ['📅 Мої записи', '🆕 Новий запис'],
+          ['📅 Мої записи'],
           ['🔄 Перенести запис', '❌ Скасувати запис'],
           ["📞 Зв'язатись з майстром"]
         ],
@@ -217,7 +217,7 @@ function showClientMenu(chatId, client) {
     parse_mode: 'Markdown',
     reply_markup: {
       keyboard: [
-        ['📅 Мої записи', '🆕 Новий запис'],
+        ['📅 Мої записи'],
         ['🔄 Перенести запис', '❌ Скасувати запис'],
         ["📞 Зв'язатись з майстром"]
       ],
@@ -469,13 +469,3 @@ app.post('/notify-client', async (req, res) => {
 
 app.get('/', (req, res) => res.send('🌸 Ideals Bot is running!'));
 app.listen(PORT, () => console.log(`🌸 Server on port ${PORT}`));
-
-bot.onText(/\/newcode/, async (msg) => {
-  const chatId = msg.chat.id;
-  delete clients[String(chatId)];
-  if (db) {
-    try { await db.collection('telegramClients').doc(String(chatId)).delete(); } catch(e) {}
-  }
-  userState[chatId] = { step: 'waiting_code' };
-  bot.sendMessage(chatId, '🔄 Введіть ваш новий код IDEALS-XXXX:');
-});
