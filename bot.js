@@ -432,3 +432,46 @@ async function showClientBookings(chatId, client) {
     bot.sendMessage(chatId, '📅 Не вдалось завантажити записи. Спробуйте пізніше.');
   }
 }
+
+// Сповіщення клієнта з адмінки
+app.post('/notify-client', async (req, res) => {
+  const { bookingId, type, name, date, time } = req.body;
+  const MN = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
+
+  // Знаходимо клієнта по bookingId
+  let clientChatId = null;
+  if (db) {
+    try {
+      const snap = await db.collection('telegramClients').get();
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.code) {
+          // Шукаємо в bookings по code
+        }
+      });
+      // Шукаємо напряму в bookings
+      const bookingDoc = await db.collection('bookings').doc(bookingId).get();
+      if (bookingDoc.exists) {
+        const booking = bookingDoc.data();
+        const clientSnap = await db.collection('telegramClients').where('code', '==', booking.code).get();
+        if (!clientSnap.empty) {
+          clientChatId = clientSnap.docs[0].data().telegramId;
+        }
+      }
+    } catch(e) { console.log('notify-client error:', e.message); }
+  }
+
+  if (clientChatId) {
+    if (type === 'confirmed') {
+      bot.sendMessage(clientChatId, `✅ Ваш запис підтверджено!\n\n💳 Не забудьте про передоплату — реквізити надіслано майстром.`);
+    } else if (type === 'cancelled') {
+      bot.sendMessage(clientChatId, `❌ На жаль, ваш запис скасовано майстром.\n\nДля нового запису зайдіть на сайт: https://ideals-nail.web.app`);
+    } else if (type === 'rescheduled') {
+      const d = new Date(date + 'T00:00:00');
+      const dateStr = d.getDate() + ' ' + MN[d.getMonth()];
+      bot.sendMessage(clientChatId, `🔄 Ваш запис перенесено!\n\n📅 ${dateStr} о ${time}\n\nЧекаємо вас! 🌸`);
+    }
+  }
+
+  res.json({ success: true, notified: !!clientChatId });
+});
