@@ -1,5 +1,17 @@
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+
+// Firebase Admin ініціалізація
+const firebaseApp = initializeApp({
+  credential: cert({
+    projectId: 'ideals-nail',
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+  })
+});
+const db = getFirestore(firebaseApp);
 
 const TOKEN = '8983487603:AAEKlidCC7AJGrhIKmYD3U-CTYxvd4vhG9A';
 const MASTER_ID = 1199443187;
@@ -199,13 +211,20 @@ bot.onText(/\/stats/, (msg) => {
   );
 });
 
-bot.on('callback_query', (query) => {
+bot.on('callback_query', async (query) => {
   const data = query.data;
   const chatId = query.message.chat.id;
 
   if (data.startsWith('confirm_')) {
     const firebaseId = data.replace('confirm_', '');
     bot.editMessageText(`✅ *Запис підтверджено*`, { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
+    // Оновлюємо статус в Firebase
+    try {
+      if (firebaseId && firebaseId !== 'none') {
+        await db.collection('bookings').doc(firebaseId).update({ status: 'confirmed' });
+        console.log('✅ Firebase оновлено: confirmed', firebaseId);
+      }
+    } catch(e) { console.log('Firebase update error:', e); }
     const client = Object.values(clients).find(c => c.bookingId === firebaseId);
     if (client) {
       bot.sendMessage(client.telegramId, `✅ *Ваш запис підтверджено!*\n\n💳 Не забудьте про передоплату — реквізити надіслано.`, { parse_mode: 'Markdown' });
@@ -213,8 +232,15 @@ bot.on('callback_query', (query) => {
   }
 
   if (data.startsWith('reject_')) {
-    bot.editMessageText(`❌ *Запис відхилено*`, { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
     const firebaseId = data.replace('reject_', '');
+    bot.editMessageText(`❌ *Запис відхилено*`, { chat_id: chatId, message_id: query.message.message_id, parse_mode: 'Markdown' });
+    // Оновлюємо статус в Firebase
+    try {
+      if (firebaseId && firebaseId !== 'none') {
+        await db.collection('bookings').doc(firebaseId).update({ status: 'cancelled' });
+        console.log('✅ Firebase оновлено: cancelled', firebaseId);
+      }
+    } catch(e) { console.log('Firebase update error:', e); }
     const client = Object.values(clients).find(c => c.bookingId === firebaseId);
     if (client) {
       bot.sendMessage(client.telegramId, `❌ На жаль, ваш запис не підтверджено. Оберіть інший час.`);
