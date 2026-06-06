@@ -114,7 +114,16 @@ bot.on('message', async (msg) => {
   }
 
   if (state && state.step === 'reschedule_date') {
-    userState[chatId].data.newDate = text;
+    // Конвертуємо ДД.ММ в YYYY-MM-DD
+    let newDate = text.trim();
+    const dateMatch = newDate.match(/^(\d{1,2})\.(\d{1,2})$/);
+    if (dateMatch) {
+      const year = new Date().getFullYear();
+      const month = dateMatch[2].padStart(2, '0');
+      const day = dateMatch[1].padStart(2, '0');
+      newDate = `${year}-${month}-${day}`;
+    }
+    userState[chatId].data.newDate = newDate;
     userState[chatId].step = 'reschedule_time';
     bot.sendMessage(chatId, `⏰ Введіть бажаний час (наприклад: *14:00*)`, { parse_mode: 'Markdown' });
     return;
@@ -274,7 +283,7 @@ async function handleMenuButton(msg) {
       return true;
     }
     userState[chatId] = { step: 'reschedule_date', data: {} };
-    bot.sendMessage(chatId, `📅 Введіть бажану нову дату (наприклад: 15 липня)`);
+    bot.sendMessage(chatId, `📅 Введіть нову дату у форматі ДД.ММ\nНаприклад: 15.07`);
     return true;
   }
 
