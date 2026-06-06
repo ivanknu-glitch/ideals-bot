@@ -405,9 +405,9 @@ async function showClientBookings(chatId, client) {
     const MN = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
     const bookings = snap.docs.map(d=>d.data()).filter(b=>b.status!=='cancelled').sort((a,b)=>a.date>b.date?1:-1);
     if (!bookings.length) {
-      bot.sendMessage(chatId, '📅 Активних записів немає.
+      bot.sendMessage(chatId, `📅 Активних записів немає.
 
-Запишіться: https://ideals-nail.web.app');
+Запишіться: https://ideals-nail.web.app`);
       return;
     }
     const text = bookings.map(b => {
@@ -438,9 +438,13 @@ app.post('/notify-client', async (req, res) => {
   }
   if (clientChatId) {
     if (type === 'confirmed') {
-      bot.sendMessage(clientChatId, '✅ Ваш запис підтверджено!\n\n💳 Не забудьте про передоплату.');
+      bot.sendMessage(clientChatId, `✅ Ваш запис підтверджено!
+
+💳 Не забудьте про передоплату.`);
     } else if (type === 'cancelled') {
-      bot.sendMessage(clientChatId, '❌ Ваш запис скасовано майстром.\n\nДля нового запису: https://ideals-nail.web.app');
+      bot.sendMessage(clientChatId, `❌ Ваш запис скасовано майстром.
+
+Для нового запису: https://ideals-nail.web.app`);
     } else if (type === 'rescheduled') {
       const d = new Date(date + 'T00:00:00');
       bot.sendMessage(clientChatId, '🔄 Ваш запис перенесено!\n\n📅 ' + d.getDate() + ' ' + MN[d.getMonth()] + ' о ' + time + '\n\nЧекаємо вас! 🌸');
