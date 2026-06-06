@@ -278,7 +278,7 @@ https://ideals-nail.web.app`);
     return true;
   }
 
-  if (text.includes('Зв'язатись') || text.includes('📞')) {
+  if (text.includes("язатись") || text.includes("📞")) {
     bot.sendMessage(chatId, `📞 Telegram майстра: @ideals_nail
 
 Пишіть якщо є запитання! 🌸`);
