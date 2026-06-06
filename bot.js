@@ -198,6 +198,7 @@ async function loadClients() {
 async function findClient(chatId) {
   // Спочатку в пам'яті
   let client = clients[String(chatId)] || Object.values(clients).find(c => c.telegramId === chatId || c.telegramId === String(chatId));
+  console.log("findClient:", chatId, "inMemory:", !!client, "keys:", Object.keys(clients).slice(0,5));
   // Якщо не знайдено — в Firebase
   if (!client && db) {
     try {
