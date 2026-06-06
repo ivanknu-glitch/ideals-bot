@@ -8,6 +8,13 @@ const PORT = process.env.PORT || 3000;
 const bot = new TelegramBot(TOKEN, { polling: true });
 const app = express();
 app.use(express.json());
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.sendStatus(200); return; }
+  next();
+});
 
 const MN = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
 const usedCodes = new Set();
