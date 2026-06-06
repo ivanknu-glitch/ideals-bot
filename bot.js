@@ -289,13 +289,31 @@ bot.on('message', async (msg) => {
     // Перевіряємо чи слот вільний
     if (db) {
       try {
+        // Перевіряємо вихідні дні
+        const settingsDoc = await db.collection('settings').doc('dayoffs').get();
+        const specificDoc = await db.collection('settings').doc('specificDaysOff').get();
+        const regularDaysOff = settingsDoc.exists ? (settingsDoc.data().days || []) : [];
+        const specificDaysOff = specificDoc.exists ? (specificDoc.data().dates || []).map(d => d.date) : [];
+
+        // Перевіряємо день тижня
+        const DN_UA = ['Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота','Неділя'];
+        const dayObj = new Date(newDate + 'T00:00:00');
+        const dayName = DN_UA[(dayObj.getDay()+6)%7];
+
+        if(regularDaysOff.includes(dayName) || specificDaysOff.includes(newDate)) {
+          bot.sendMessage(chatId, `❌ ${fmtDate(newDate)} — вихідний день.\n\nВведіть іншу дату (ДД.ММ):`);
+          userState[chatId].step = 'reschedule_date';
+          return;
+        }
+
+        // Перевіряємо чи слот вільний
         const snap = await db.collection('bookings')
           .where('date', '==', newDate)
           .where('time', '==', time)
           .where('status', '!=', 'cancelled')
           .get();
         if (!snap.empty) {
-          bot.sendMessage(chatId, 'На жаль, ' + newDate + ' о ' + time + ' вже зайнято.\n\nВведіть іншу дату (ДД.ММ):');
+          bot.sendMessage(chatId, `❌ На жаль, ${fmtDate(newDate)} о ${time} вже зайнято.\n\nВведіть іншу дату (ДД.ММ):`);
           userState[chatId].step = 'reschedule_date';
           return;
         }
