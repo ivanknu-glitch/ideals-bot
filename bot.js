@@ -4,14 +4,28 @@ const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
 // Firebase Admin ініціалізація
-const firebaseApp = initializeApp({
-  credential: cert({
-    projectId: 'ideals-nail',
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
-  })
-});
-const db = getFirestore(firebaseApp);
+let db = null;
+try {
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY
+    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+    : null;
+  
+  if (privateKey && process.env.FIREBASE_CLIENT_EMAIL) {
+    const firebaseApp = initializeApp({
+      credential: cert({
+        projectId: 'ideals-nail',
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      })
+    });
+    db = getFirestore(firebaseApp);
+    console.log('✅ Firebase Admin підключено');
+  } else {
+    console.log('⚠️ Firebase змінні не знайдено, продовжуємо без Firebase');
+  }
+} catch(e) {
+  console.log('⚠️ Firebase Admin помилка:', e.message);
+}
 
 const TOKEN = '8983487603:AAEKlidCC7AJGrhIKmYD3U-CTYxvd4vhG9A';
 const MASTER_ID = 1199443187;
