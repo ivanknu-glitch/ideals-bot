@@ -95,8 +95,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
-  console.log("MSG:", chatId, text);
-  if (!text || text.startsWith("/")) return;
+  if (!text || text.startsWith('/')) return;
 
   // Перевіряємо кнопки меню
   const isMenuButton = await handleMenuButton(msg);
@@ -198,7 +197,6 @@ async function loadClients() {
 async function findClient(chatId) {
   // Спочатку в пам'яті
   let client = clients[String(chatId)] || Object.values(clients).find(c => c.telegramId === chatId || c.telegramId === String(chatId));
-  console.log("findClient:", chatId, "inMemory:", !!client, "keys:", Object.keys(clients).slice(0,5));
   // Якщо не знайдено — в Firebase
   if (!client && db) {
     try {
@@ -233,6 +231,11 @@ async function handleMenuButton(msg) {
   const chatId = msg.chat.id;
   const text = msg.text || '';
 
+  if (text.includes('Новий запис')) {
+    bot.sendMessage(chatId, `🆕 Перейдіть для запису:\nhttps://ideals-nail.web.app?tg=${chatId}`);
+    return true;
+  }
+
   if (text.includes('Мої записи')) {
     const client = await findClient(chatId);
     if (!client) {
@@ -240,7 +243,7 @@ async function handleMenuButton(msg) {
       userState[chatId] = { step: 'waiting_code' };
       return true;
     }
-    await showClientBookings(chatId, client);
+    bot.sendMessage(chatId, `📅 Для перегляду записів зайдіть на сайт:
 https://ideals-nail.web.app`);
     return true;
   }
@@ -275,7 +278,7 @@ https://ideals-nail.web.app`);
     return true;
   }
 
-  if (text.includes('майстром') || text.includes('язатись')) {
+  if (text.includes('Зв'язатись') || text.includes('📞')) {
     bot.sendMessage(chatId, `📞 Telegram майстра: @ideals_nail
 
 Пишіть якщо є запитання! 🌸`);
@@ -398,80 +401,3 @@ app.post('/new-booking', (req, res) => {
 
 app.get('/', (req, res) => res.send('🌸 Ideals Bot is running!'));
 app.listen(PORT, () => console.log(`🌸 Server on port ${PORT}`));
-
-async function showClientBookings(chatId, client) {
-  if (!db) {
-    bot.sendMessage(chatId, '📅 Записи тимчасово недоступні');
-    return;
-  }
-  try {
-    const snap = await db.collection('bookings')
-      .where('code', '==', client.code)
-      .get();
-    
-    const bookings = snap.docs
-      .map(d => d.data())
-      .filter(b => b.status !== 'cancelled')
-      .sort((a, b) => a.date > b.date ? 1 : -1);
-
-    if (!bookings.length) {
-      bot.sendMessage(chatId, '📅 Активних записів немає.\n\nЗапишіться на сайті: https://ideals-nail.web.app');
-      return;
-    }
-
-    const MN = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
-    const text = bookings.map(b => {
-      const d = new Date(b.date + 'T00:00:00');
-      const status = b.status === 'confirmed' ? '✅' : '⏳';
-      return `${status} ${d.getDate()} ${MN[d.getMonth()]}, ${b.time}\n💅 ${b.services}\n💰 ${b.price} грн`;
-    }).join('\n\n');
-
-    bot.sendMessage(chatId, `📅 Ваші записи:\n\n${text}`);
-  } catch(e) {
-    console.log('showClientBookings error:', e.message);
-    bot.sendMessage(chatId, '📅 Не вдалось завантажити записи. Спробуйте пізніше.');
-  }
-}
-
-// Сповіщення клієнта з адмінки
-app.post('/notify-client', async (req, res) => {
-  const { bookingId, type, name, date, time } = req.body;
-  const MN = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
-
-  // Знаходимо клієнта по bookingId
-  let clientChatId = null;
-  if (db) {
-    try {
-      const snap = await db.collection('telegramClients').get();
-      snap.docs.forEach(d => {
-        const data = d.data();
-        if (data.code) {
-          // Шукаємо в bookings по code
-        }
-      });
-      // Шукаємо напряму в bookings
-      const bookingDoc = await db.collection('bookings').doc(bookingId).get();
-      if (bookingDoc.exists) {
-        const booking = bookingDoc.data();
-        const clientSnap = await db.collection('telegramClients').where('code', '==', booking.code).get();
-        if (!clientSnap.empty) {
-          clientChatId = clientSnap.docs[0].data().telegramId;
-        }
-      }
-    } catch(e) { console.log('notify-client error:', e.message); }
-  }
-
-  if (clientChatId) {
-    if (type === 'confirmed') {
-      bot.sendMessage(clientChatId, `✅ Ваш запис підтверджено!\n\n💳 Не забудьте про передоплату — реквізити надіслано майстром.`);
-    } else if (type === 'cancelled') {
-      bot.sendMessage(clientChatId, `❌ На жаль, ваш запис скасовано майстром.\n\nДля нового запису зайдіть на сайт: https://ideals-nail.web.app`);
-    } else if (type === 'rescheduled') {
-      const d = new Date(date + 'T00:00:00');
-      const dateStr = d.getDate() + ' ' + MN[d.getMonth()];
-      bot.sendMessage(clientChatId, `🔄 Ваш запис перенесено!\n\n📅 ${dateStr} о ${time}\n\nЧекаємо вас! 🌸`);
-    }
-  }
-
-  res.json({ success: true, notified: !!clientChatId });
-});
