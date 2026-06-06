@@ -28,7 +28,7 @@ try {
 }
 
 const TOKEN = '8983487603:AAEKlidCC7AJGrhIKmYD3U-CTYxvd4vhG9A';
-const MASTER_ID = 1199443187;
+const MASTER_ID = 845655193;
 const PORT = process.env.PORT || 3000;
 
 const bot = new TelegramBot(TOKEN, { polling: true });
