@@ -97,8 +97,6 @@ bot.on('message', async (msg) => {
   const text = msg.text;
   console.log("MSG:", chatId, text);
   if (!text || text.startsWith("/")) return;
-  const text = msg.text;
-  if (!text || text.startsWith('/')) return;
 
   // Перевіряємо кнопки меню
   const isMenuButton = await handleMenuButton(msg);
