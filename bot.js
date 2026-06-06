@@ -164,7 +164,7 @@ async function linkClient(chatId, code, msg) {
       parse_mode: 'Markdown',
       reply_markup: {
         keyboard: [
-          ['📅 Мої записи'],
+          ['📅 Мої записи', '🆕 Новий запис'],
           ['🔄 Перенести запис', '❌ Скасувати запис'],
           ["📞 Зв'язатись з майстром"]
         ],
@@ -217,7 +217,7 @@ function showClientMenu(chatId, client) {
     parse_mode: 'Markdown',
     reply_markup: {
       keyboard: [
-        ['📅 Мої записи'],
+        ['📅 Мої записи', '🆕 Новий запис'],
         ['🔄 Перенести запис', '❌ Скасувати запис'],
         ["📞 Зв'язатись з майстром"]
       ],
