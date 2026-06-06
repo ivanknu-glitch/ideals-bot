@@ -361,6 +361,20 @@ bot.on('callback_query', async (query) => {
     bot.editMessageText('✅ Запис скасовано', { chat_id: chatId, message_id: query.message.message_id });
     bot.sendMessage(clientChatId, '✅ Ваш запис скасовано. До зустрічі! 🌸');
     bot.sendMessage(MASTER_ID, `⚠️ Клієнт скасував запис`);
+    // Оновлюємо Firebase
+    if (db) {
+      try {
+        const client = await db.collection('telegramClients').doc(String(clientChatId)).get();
+        if (client.exists) {
+          const code = client.data().code;
+          const snap = await db.collection('bookings').where('code', '==', code).where('status', '!=', 'cancelled').get();
+          for (const doc of snap.docs) {
+            await db.collection('bookings').doc(doc.id).update({ status: 'cancelled' });
+          }
+          console.log('✅ Запис скасовано в Firebase');
+        }
+      } catch(e) { console.log('cancel Firebase error:', e.message); }
+    }
   }
 
   if (data === 'keep') {
@@ -455,10 +469,3 @@ app.post('/notify-client', async (req, res) => {
 
 app.get('/', (req, res) => res.send('🌸 Ideals Bot is running!'));
 app.listen(PORT, () => console.log(`🌸 Server on port ${PORT}`));
-
-bot.onText(/\/newcode/, (msg) => {
-  const chatId = msg.chat.id;
-  delete clients[String(chatId)];
-  userState[chatId] = { step: 'waiting_code' };
-  bot.sendMessage(chatId, '🔄 Введіть ваш новий код IDEALS-XXXX:');
-});
