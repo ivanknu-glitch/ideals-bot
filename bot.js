@@ -95,6 +95,9 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
+  console.log("MSG:", chatId, text);
+  if (!text || text.startsWith("/")) return;
+  const text = msg.text;
   if (!text || text.startsWith('/')) return;
 
   // Перевіряємо кнопки меню
