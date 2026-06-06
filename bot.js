@@ -240,7 +240,7 @@ async function handleMenuButton(msg) {
       userState[chatId] = { step: 'waiting_code' };
       return true;
     }
-    console.log("sending msg to", chatId); bot.sendMessage(chatId, `📅 Для перегляду записів зайдіть на сайт:
+    await showClientBookings(chatId, client);
 https://ideals-nail.web.app`);
     return true;
   }
@@ -398,3 +398,37 @@ app.post('/new-booking', (req, res) => {
 
 app.get('/', (req, res) => res.send('🌸 Ideals Bot is running!'));
 app.listen(PORT, () => console.log(`🌸 Server on port ${PORT}`));
+
+async function showClientBookings(chatId, client) {
+  if (!db) {
+    bot.sendMessage(chatId, '📅 Записи тимчасово недоступні');
+    return;
+  }
+  try {
+    const snap = await db.collection('bookings')
+      .where('phone', '==', client.phone)
+      .get();
+    
+    const bookings = snap.docs
+      .map(d => d.data())
+      .filter(b => b.status !== 'cancelled')
+      .sort((a, b) => a.date > b.date ? 1 : -1);
+
+    if (!bookings.length) {
+      bot.sendMessage(chatId, '📅 Активних записів немає.\n\nЗапишіться на сайті: https://ideals-nail.web.app');
+      return;
+    }
+
+    const MN = ['січ','лют','бер','кві','тра','чер','лип','сер','вер','жов','лис','гру'];
+    const text = bookings.map(b => {
+      const d = new Date(b.date + 'T00:00:00');
+      const status = b.status === 'confirmed' ? '✅' : '⏳';
+      return `${status} ${d.getDate()} ${MN[d.getMonth()]}, ${b.time}\n💅 ${b.services}\n💰 ${b.price} грн`;
+    }).join('\n\n');
+
+    bot.sendMessage(chatId, `📅 Ваші записи:\n\n${text}`);
+  } catch(e) {
+    console.log('showClientBookings error:', e.message);
+    bot.sendMessage(chatId, '📅 Не вдалось завантажити записи. Спробуйте пізніше.');
+  }
+}
