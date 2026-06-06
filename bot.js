@@ -82,18 +82,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
     return;
   }
 
-  // Перевіряємо в пам'яті
-  let known = Object.values(clients).find(c => c.telegramId === chatId);
-  // Якщо не знайдено — перевіряємо в Firebase
-  if (!known && db) {
-    try {
-      const doc = await db.collection('telegramClients').doc(String(chatId)).get();
-      if (doc.exists) {
-        known = doc.data();
-        clients[known.code] = known;
-      }
-    } catch(e) {}
-  }
+  const known = await findClient(chatId);
   if (known) { showClientMenu(chatId, known); return; }
 
   bot.sendMessage(chatId,
@@ -103,7 +92,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   userState[chatId] = { step: 'waiting_code' };
 });
 
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
   if (!text || text.startsWith('/')) return;
@@ -129,7 +118,7 @@ bot.on('message', (msg) => {
 
   if (state && state.step === 'reschedule_time') {
     const time = text.trim();
-    const client = Object.values(clients).find(c => c.telegramId === chatId);
+    const client = await findClient(chatId);
     const newDate = userState[chatId].data.newDate;
     bot.sendMessage(MASTER_ID,
       `🔄 *Запит на перенесення*\n\n👤 ${client ? client.name : 'Клієнт'}\n📱 ${client ? client.phone : '—'}\n📅 Нова дата: ${newDate}\n⏰ Новий час: ${time}`,
@@ -154,6 +143,7 @@ async function linkClient(chatId, code, msg) {
   const username = msg.from.username || '';
   const clientData = { telegramId: chatId, name, phone: '—', code, username };
   clients[code] = clientData;
+  clients[String(chatId)] = clientData;
   delete userState[chatId];
 
   // Зберігаємо в Firebase
@@ -193,9 +183,28 @@ async function loadClients() {
     snap.docs.forEach(d => {
       const data = d.data();
       if (data.code) clients[data.code] = data;
+      if (data.telegramId) clients[String(data.telegramId)] = data;
     });
     console.log('✅ Завантажено клієнтів:', Object.keys(clients).length);
   } catch(e) { console.log('Firebase load clients error:', e.message); }
+}
+
+// Пошук клієнта по telegramId
+async function findClient(chatId) {
+  // Спочатку в пам'яті
+  let client = clients[String(chatId)] || Object.values(clients).find(c => c.telegramId === chatId || c.telegramId === String(chatId));
+  // Якщо не знайдено — в Firebase
+  if (!client && db) {
+    try {
+      const doc = await db.collection('telegramClients').doc(String(chatId)).get();
+      if (doc.exists) {
+        client = doc.data();
+        clients[String(chatId)] = client;
+        if (client.code) clients[client.code] = client;
+      }
+    } catch(e) {}
+  }
+  return client;
 }
 loadClients();
 
@@ -219,13 +228,7 @@ bot.onText(/📅 Мої записи/, (msg) => {
 
 bot.onText(/🔄 Перенести запис/, async (msg) => {
   const chatId = msg.chat.id;
-  let client = Object.values(clients).find(c => c.telegramId === chatId);
-  if (!client && db) {
-    try {
-      const doc = await db.collection('telegramClients').doc(String(chatId)).get();
-      if (doc.exists) { client = doc.data(); clients[client.code] = client; }
-    } catch(e) {}
-  }
+  const client = await findClient(chatId);
   if (!client) { bot.sendMessage(chatId, 'Спочатку введіть ваш код IDEALS-XXXX'); return; }
   userState[chatId] = { step: 'reschedule_date', data: {} };
   bot.sendMessage(chatId, `📅 Введіть бажану нову дату (наприклад: *15 липня*)`, { parse_mode: 'Markdown' });
