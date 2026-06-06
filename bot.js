@@ -65,7 +65,7 @@ function fmtDate(dateStr) {
 }
 
 // /start
-bot.onText(/\/start(.*)/, (msg, match) => {
+bot.onText(/\/start(.*)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const param = match[1].trim();
 
@@ -82,7 +82,18 @@ bot.onText(/\/start(.*)/, (msg, match) => {
     return;
   }
 
-  const known = Object.values(clients).find(c => c.telegramId === chatId);
+  // Перевіряємо в пам'яті
+  let known = Object.values(clients).find(c => c.telegramId === chatId);
+  // Якщо не знайдено — перевіряємо в Firebase
+  if (!known && db) {
+    try {
+      const doc = await db.collection('telegramClients').doc(String(chatId)).get();
+      if (doc.exists) {
+        known = doc.data();
+        clients[known.code] = known;
+      }
+    } catch(e) {}
+  }
   if (known) { showClientMenu(chatId, known); return; }
 
   bot.sendMessage(chatId,
@@ -138,10 +149,20 @@ bot.on('message', (msg) => {
   }
 });
 
-function linkClient(chatId, code, msg) {
+async function linkClient(chatId, code, msg) {
   const name = msg.from.first_name || 'Клієнт';
-  clients[code] = { telegramId: chatId, name, phone: '—', code };
+  const username = msg.from.username || '';
+  const clientData = { telegramId: chatId, name, phone: '—', code, username };
+  clients[code] = clientData;
   delete userState[chatId];
+
+  // Зберігаємо в Firebase
+  if (db) {
+    try {
+      await db.collection('telegramClients').doc(String(chatId)).set(clientData);
+      console.log('✅ Клієнт збережено в Firebase:', chatId);
+    } catch(e) { console.log('Firebase client save error:', e.message); }
+  }
 
   bot.sendMessage(chatId,
     `✅ *${name}, ваш код прийнято!*\n\nТепер ви будете отримувати сповіщення про ваш запис 🌸`,
@@ -159,10 +180,24 @@ function linkClient(chatId, code, msg) {
   );
 
   bot.sendMessage(MASTER_ID,
-    `🔗 *Клієнт прив'язав код*\n\n👤 ${name}\n🔑 ${code}\n💬 @${msg.from.username || 'без username'}`,
+    `🔗 *Клієнт прив'язав код*\n\n👤 ${name}\n🔑 ${code}\n💬 @${username || 'без username'}`,
     { parse_mode: 'Markdown' }
   );
 }
+
+// Завантажуємо клієнтів з Firebase при старті
+async function loadClients() {
+  if (!db) return;
+  try {
+    const snap = await db.collection('telegramClients').get();
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.code) clients[data.code] = data;
+    });
+    console.log('✅ Завантажено клієнтів:', Object.keys(clients).length);
+  } catch(e) { console.log('Firebase load clients error:', e.message); }
+}
+loadClients();
 
 function showClientMenu(chatId, client) {
   bot.sendMessage(chatId, `🌸 *Вітаємо, ${client.name}!*\nОберіть дію:`, {
@@ -182,9 +217,15 @@ bot.onText(/📅 Мої записи/, (msg) => {
   bot.sendMessage(msg.chat.id, `📅 Для перегляду записів зайдіть на сайт:\nhttps://ideals-nail.web.app`);
 });
 
-bot.onText(/🔄 Перенести запис/, (msg) => {
+bot.onText(/🔄 Перенести запис/, async (msg) => {
   const chatId = msg.chat.id;
-  const client = Object.values(clients).find(c => c.telegramId === chatId);
+  let client = Object.values(clients).find(c => c.telegramId === chatId);
+  if (!client && db) {
+    try {
+      const doc = await db.collection('telegramClients').doc(String(chatId)).get();
+      if (doc.exists) { client = doc.data(); clients[client.code] = client; }
+    } catch(e) {}
+  }
   if (!client) { bot.sendMessage(chatId, 'Спочатку введіть ваш код IDEALS-XXXX'); return; }
   userState[chatId] = { step: 'reschedule_date', data: {} };
   bot.sendMessage(chatId, `📅 Введіть бажану нову дату (наприклад: *15 липня*)`, { parse_mode: 'Markdown' });
