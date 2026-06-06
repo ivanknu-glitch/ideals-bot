@@ -240,7 +240,7 @@ async function handleMenuButton(msg) {
       userState[chatId] = { step: 'waiting_code' };
       return true;
     }
-    bot.sendMessage(chatId, `📅 Для перегляду записів зайдіть на сайт:
+    console.log("sending msg to", chatId); bot.sendMessage(chatId, `📅 Для перегляду записів зайдіть на сайт:
 https://ideals-nail.web.app`);
     return true;
   }
