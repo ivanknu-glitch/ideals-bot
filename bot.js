@@ -325,7 +325,12 @@ async function handleMenuButton(msg) {
   }
 
   if (text.includes('язатись') || text.includes('📞') || text.includes('майстром')) {
-    bot.sendMessage(chatId, `📞 Telegram майстра: @ideals_nail
+    bot.sendMessage(chatId, `📞 Зв'язатись з майстром Інною:
+
+✈️ Telegram: @Ideals_i
+📱 Телефон: +380631562600
+
+Пишіть або телефонуйте! 🌸`, { reply_markup: { inline_keyboard: [[{ text: '✈️ Написати в Telegram', url: 'https://t.me/Ideals_i' }, { text: '📱 Зателефонувати', url: 'tel:+380631562600' }]] } });
 
 Пишіть якщо є запитання! 🌸`);
     return true;
