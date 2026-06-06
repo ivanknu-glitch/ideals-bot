@@ -234,8 +234,7 @@ async function handleMenuButton(msg) {
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: 'Написати в Telegram', url: 'https://t.me/Ideals_i' },
-            { text: 'Зателефонувати', url: 'tel:+380631562600' }
+            { text: 'Написати в Telegram', url: 'https://t.me/Ideals_i' }
           ]]
         }
       }
