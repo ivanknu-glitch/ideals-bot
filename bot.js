@@ -273,7 +273,7 @@ https://ideals-nail.web.app`);
     return true;
   }
 
-  if (text.includes('Зв'язатись') || text.includes('📞')) {
+  if (text.includes('майстром') || text.includes('язатись')) {
     bot.sendMessage(chatId, `📞 Telegram майстра: @ideals_nail
 
 Пишіть якщо є запитання! 🌸`);
