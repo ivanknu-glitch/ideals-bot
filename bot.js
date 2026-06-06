@@ -366,7 +366,21 @@ bot.on('callback_query', async (query) => {
     const newDate = parts[3];
     const newTime = parts[4];
     bot.editMessageText(`✅ Перенесення підтверджено: ${newDate} о ${newTime}`, { chat_id: chatId, message_id: query.message.message_id });
-    bot.sendMessage(clientChatId, `✅ *Запис перенесено!*\n📅 ${newDate} о ${newTime}\n\nЧекаємо вас! 🌸`, { parse_mode: 'Markdown' });
+    bot.sendMessage(clientChatId, `✅ Запис перенесено!\n📅 ${newDate} о ${newTime}\n\nЧекаємо вас! 🌸`);
+    // Оновлюємо Firebase — знаходимо запис клієнта і оновлюємо дату і час
+    if (db) {
+      try {
+        const clientDoc = await db.collection('telegramClients').doc(String(clientChatId)).get();
+        if (clientDoc.exists) {
+          const code = clientDoc.data().code;
+          const snap = await db.collection('bookings').where('code', '==', code).where('status', '!=', 'cancelled').get();
+          for (const doc of snap.docs) {
+            await db.collection('bookings').doc(doc.id).update({ date: newDate, time: newTime, status: 'confirmed' });
+            console.log('✅ Перенесення збережено в Firebase:', newDate, newTime);
+          }
+        }
+      } catch(e) { console.log('Reschedule Firebase error:', e.message); }
+    }
   }
 
   if (data.startsWith('res_no_')) {
