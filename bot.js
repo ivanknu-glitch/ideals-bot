@@ -143,25 +143,40 @@ bot.on('message', async (msg) => {
 });
 
 async function linkClient(chatId, code, msg) {
-  const name = msg.from.first_name || 'Клієнт';
+  const tgName = msg.from.first_name || 'Клієнт';
   const username = msg.from.username || '';
-  const clientData = { telegramId: chatId, name, phone: '—', code, username };
+  
+  // Шукаємо реальне ім'я і телефон з запису в Firebase
+  let realName = tgName;
+  let realPhone = '—';
+  if (db) {
+    try {
+      const snap = await db.collection('bookings').where('code', '==', code).limit(1).get();
+      if (!snap.empty) {
+        const booking = snap.docs[0].data();
+        if (booking.name) realName = booking.name;
+        if (booking.phone) realPhone = booking.phone;
+      }
+    } catch(e) { console.log('Booking lookup error:', e.message); }
+  }
+
+  const clientData = { telegramId: chatId, name: realName, phone: realPhone, code, username };
   clients[code] = clientData;
   clients[String(chatId)] = clientData;
   delete userState[chatId];
 
-  // Зберігаємо в Firebase
   if (db) {
     try {
       await db.collection('telegramClients').doc(String(chatId)).set(clientData);
-      console.log('✅ Клієнт збережено в Firebase:', chatId);
+      console.log('✅ Клієнт збережено:', realName, realPhone);
     } catch(e) { console.log('Firebase client save error:', e.message); }
   }
 
   bot.sendMessage(chatId,
-    `✅ *${name}, ваш код прийнято!*\n\nТепер ви будете отримувати сповіщення про ваш запис 🌸`,
+    `✅ ${realName}, ваш код прийнято!
+
+Тепер ви будете отримувати сповіщення про ваш запис 🌸`,
     {
-      parse_mode: 'Markdown',
       reply_markup: {
         keyboard: [
           ['📅 Мої записи', '🆕 Новий запис'],
@@ -174,8 +189,12 @@ async function linkClient(chatId, code, msg) {
   );
 
   bot.sendMessage(MASTER_ID,
-    `🔗 *Клієнт прив'язав код*\n\n👤 ${name}\n🔑 ${code}\n💬 @${username || 'без username'}`,
-    { parse_mode: 'Markdown' }
+    `🔗 Клієнт прив'язав код
+
+👤 ${realName}
+📱 ${realPhone}
+🔑 ${code}
+💬 @${username || 'без username'}`
   );
 }
 
