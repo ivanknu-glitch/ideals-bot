@@ -133,6 +133,25 @@ bot.on('message', async (msg) => {
     const time = text.trim();
     const client = await findClient(chatId);
     const newDate = userState[chatId].data.newDate;
+
+    // Перевіряємо чи слот вільний
+    if (db) {
+      try {
+        const snap = await db.collection('bookings')
+          .where('date', '==', newDate)
+          .where('time', '==', time)
+          .where('status', '!=', 'cancelled')
+          .get();
+        if (!snap.empty) {
+          bot.sendMessage(chatId,
+            `❌ На жаль, ${newDate} о ${time} вже зайнято.\n\nВведіть іншу дату (ДД.ММ):`
+          );
+          userState[chatId].step = 'reschedule_date';
+          return;
+        }
+      } catch(e) { console.log('Slot check error:', e.message); }
+    }
+
     bot.sendMessage(MASTER_ID,
       `🔄 *Запит на перенесення*\n\n👤 ${client ? client.name : 'Клієнт'}\n📱 ${client ? client.phone : '—'}\n📅 Нова дата: ${newDate}\n⏰ Новий час: ${time}`,
       {
