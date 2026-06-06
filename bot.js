@@ -222,8 +222,15 @@ function showClientMenu(chatId, client) {
   });
 }
 
-bot.onText(/📅 Мої записи/, (msg) => {
-  bot.sendMessage(msg.chat.id, `📅 Для перегляду записів зайдіть на сайт:\nhttps://ideals-nail.web.app`);
+bot.onText(/📅 Мої записи/, async (msg) => {
+  const chatId = msg.chat.id;
+  const client = await findClient(chatId);
+  if (!client) {
+    bot.sendMessage(chatId, `Введіть ваш код IDEALS-XXXX щоб прив'язати запис`);
+    userState[chatId] = { step: 'waiting_code' };
+    return;
+  }
+  bot.sendMessage(chatId, `📅 Для перегляду записів зайдіть на сайт:\nhttps://ideals-nail.web.app`);
 });
 
 bot.onText(/🔄 Перенести запис/, async (msg) => {
@@ -234,9 +241,15 @@ bot.onText(/🔄 Перенести запис/, async (msg) => {
   bot.sendMessage(chatId, `📅 Введіть бажану нову дату (наприклад: *15 липня*)`, { parse_mode: 'Markdown' });
 });
 
-bot.onText(/❌ Скасувати запис/, (msg) => {
+bot.onText(/❌ Скасувати запис/, async (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `❌ *Скасувати запис?*`, {
+  const client = await findClient(chatId);
+  if (!client) {
+    bot.sendMessage(chatId, `Введіть ваш код IDEALS-XXXX щоб прив'язати запис`);
+    userState[chatId] = { step: 'waiting_code' };
+    return;
+  }
+  bot.sendMessage(chatId, `❌ Скасувати запис?`, {
     parse_mode: 'Markdown',
     reply_markup: {
       inline_keyboard: [[
