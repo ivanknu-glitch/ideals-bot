@@ -406,7 +406,7 @@ async function showClientBookings(chatId, client) {
   }
   try {
     const snap = await db.collection('bookings')
-      .where('phone', '==', client.phone)
+      .where('code', '==', client.code)
       .get();
     
     const bookings = snap.docs
