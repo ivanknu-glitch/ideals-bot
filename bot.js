@@ -624,13 +624,12 @@ async function checkReminders() {
   if (!db) return;
   try {
     const now = new Date();
-    const snap = await db.collection('bookings')
-      .where('status', '!=', 'cancelled')
-      .get();
+    const snap = await db.collection('bookings').get();
 
     for (const docSnap of snap.docs) {
       const b = docSnap.data();
       if (!b.date || !b.time) continue;
+      if (b.status === 'cancelled') continue;
 
       const bookingTime = new Date(b.date + 'T' + b.time + ':00');
       const diffMs = bookingTime - now;
