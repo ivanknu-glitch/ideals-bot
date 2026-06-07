@@ -205,8 +205,44 @@ async function handleMenuButton(msg) {
       userState[chatId] = { step: 'waiting_code' };
       return true;
     }
-    userState[chatId] = { step: 'reschedule_date', data: {} };
-    bot.sendMessage(chatId, 'Введіть нову дату у форматі ДД.ММ\nНаприклад: 15.07');
+    // Показуємо список активних записів для вибору
+    if (db) {
+      try {
+        let snap;
+        if (client.phone && client.phone !== '—') {
+          snap = await db.collection('bookings').where('phone', '==', client.phone).get();
+        } else {
+          snap = await db.collection('bookings').where('code', '==', client.code).get();
+        }
+        const active = snap.docs.map(d => ({...d.data(), id: d.id}))
+          .filter(b => b.status !== 'cancelled')
+          .sort((a,b) => a.date > b.date ? 1 : -1);
+        
+        if (!active.length) {
+          bot.sendMessage(chatId, 'Активних записів немає.');
+          return true;
+        }
+        if (active.length === 1) {
+          userState[chatId] = { step: 'reschedule_date', data: { bookingId: active[0].id } };
+          bot.sendMessage(chatId, 'Введіть нову дату у форматі ДД.ММ\nНаприклад: 15.07');
+          return true;
+        }
+        // Кілька записів — показуємо вибір
+        const keyboard = active.map(b => [{
+          text: `${fmtDate(b.date)} ${b.time} — ${(b.services||'').split(',')[0]}`,
+          callback_data: `pick_reschedule_${b.id}`
+        }]);
+        bot.sendMessage(chatId, 'Оберіть запис для перенесення:', {
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      } catch(e) {
+        userState[chatId] = { step: 'reschedule_date', data: {} };
+        bot.sendMessage(chatId, 'Введіть нову дату у форматі ДД.ММ\nНаприклад: 15.07');
+      }
+    } else {
+      userState[chatId] = { step: 'reschedule_date', data: {} };
+      bot.sendMessage(chatId, 'Введіть нову дату у форматі ДД.ММ\nНаприклад: 15.07');
+    }
     return true;
   }
 
@@ -217,14 +253,53 @@ async function handleMenuButton(msg) {
       userState[chatId] = { step: 'waiting_code' };
       return true;
     }
-    bot.sendMessage(chatId, 'Скасувати запис?', {
-      reply_markup: {
-        inline_keyboard: [[
-          { text: 'Так, скасувати', callback_data: `cancel_${chatId}` },
-          { text: 'Ні, залишити', callback_data: 'keep' }
-        ]]
+    // Показуємо список активних записів для вибору
+    if (db) {
+      try {
+        let snap;
+        if (client.phone && client.phone !== '—') {
+          snap = await db.collection('bookings').where('phone', '==', client.phone).get();
+        } else {
+          snap = await db.collection('bookings').where('code', '==', client.code).get();
+        }
+        const active = snap.docs.map(d => ({...d.data(), id: d.id}))
+          .filter(b => b.status !== 'cancelled')
+          .sort((a,b) => a.date > b.date ? 1 : -1);
+        
+        if (!active.length) {
+          bot.sendMessage(chatId, 'Активних записів немає.');
+          return true;
+        }
+        if (active.length === 1) {
+          bot.sendMessage(chatId, 'Скасувати запис ' + fmtDate(active[0].date) + ' о ' + active[0].time + '?', {
+            reply_markup: {
+              inline_keyboard: [[
+                { text: 'Так, скасувати', callback_data: `cancel_booking_${active[0].id}_${chatId}` },
+                { text: 'Ні, залишити', callback_data: 'keep' }
+              ]]
+            }
+          });
+          return true;
+        }
+        // Кілька записів — показуємо вибір
+        const keyboard = active.map(b => [{
+          text: `${fmtDate(b.date)} ${b.time} — ${(b.services||'').split(',')[0]}`,
+          callback_data: `pick_cancel_${b.id}_${chatId}`
+        }]);
+        bot.sendMessage(chatId, 'Оберіть запис для скасування:', {
+          reply_markup: { inline_keyboard: keyboard }
+        });
+      } catch(e) {
+        bot.sendMessage(chatId, 'Скасувати запис?', {
+          reply_markup: {
+            inline_keyboard: [[
+              { text: 'Так, скасувати', callback_data: `cancel_${chatId}` },
+              { text: 'Ні, залишити', callback_data: 'keep' }
+            ]]
+          }
+        });
       }
-    });
+    }
     return true;
   }
 
@@ -278,6 +353,7 @@ bot.on('message', async (msg) => {
     userState[chatId].data.newDate = newDate;
     userState[chatId].step = 'reschedule_time';
     bot.sendMessage(chatId, 'Введіть бажаний час (наприклад: 14:00)');
+    // bookingId зберігається в userState[chatId].data.bookingId
     return;
   }
 
@@ -367,12 +443,17 @@ bot.on('callback_query', async (query) => {
     bot.sendMessage(clientChatId, 'Запис перенесено!\n' + fmtDate(newDate) + ' о ' + newTime + '\n\nЧекаємо вас!');
     if (db) {
       try {
-        const clientDoc = await db.collection('telegramClients').doc(String(clientChatId)).get();
-        if (clientDoc.exists) {
-          const code = clientDoc.data().code;
-          const snap = await db.collection('bookings').where('code', '==', code).where('status', '!=', 'cancelled').get();
-          for (const doc of snap.docs) {
-            await db.collection('bookings').doc(doc.id).update({ date: newDate, time: newTime, status: 'confirmed' });
+        // Якщо є конкретний bookingId — оновлюємо тільки його
+        const bookingId = userState[clientChatId] && userState[clientChatId].data && userState[clientChatId].data.bookingId;
+        if (bookingId) {
+          await db.collection('bookings').doc(bookingId).update({ date: newDate, time: newTime, status: 'confirmed' });
+        } else {
+          const clientDoc = await db.collection('telegramClients').doc(String(clientChatId)).get();
+          if (clientDoc.exists) {
+            const code = clientDoc.data().code;
+            const snap = await db.collection('bookings').where('code', '==', code).where('status', '!=', 'cancelled').get();
+            const firstDoc = snap.docs[0];
+            if (firstDoc) await db.collection('bookings').doc(firstDoc.id).update({ date: newDate, time: newTime, status: 'confirmed' });
           }
         }
       } catch(e) { console.log('Reschedule Firebase error:', e.message); }
@@ -406,6 +487,53 @@ bot.on('callback_query', async (query) => {
 
   if (data === 'keep') {
     bot.editMessageText('Запис залишено!', { chat_id: chatId, message_id: query.message.message_id });
+  }
+
+  // Вибір конкретного запису для перенесення
+  if (data.startsWith('pick_reschedule_')) {
+    const bookingId = data.replace('pick_reschedule_', '');
+    bot.editMessageText('Введіть нову дату у форматі ДД.ММ\nНаприклад: 15.07', { chat_id: chatId, message_id: query.message.message_id });
+    userState[chatId] = { step: 'reschedule_date', data: { bookingId } };
+  }
+
+  // Вибір конкретного запису для скасування
+  if (data.startsWith('pick_cancel_')) {
+    const parts = data.split('_');
+    const bookingId = parts[2];
+    const clientChatId = parseInt(parts[3]);
+    if (db) {
+      try {
+        const bookingDoc = await db.collection('bookings').doc(bookingId).get();
+        if (bookingDoc.exists) {
+          const b = bookingDoc.data();
+          bot.editMessageText('Скасувати запис ' + fmtDate(b.date) + ' о ' + b.time + '?', {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            reply_markup: {
+              inline_keyboard: [[
+                { text: 'Так, скасувати', callback_data: `cancel_booking_${bookingId}_${clientChatId}` },
+                { text: 'Ні, залишити', callback_data: 'keep' }
+              ]]
+            }
+          });
+        }
+      } catch(e) {}
+    }
+  }
+
+  // Скасування конкретного запису
+  if (data.startsWith('cancel_booking_')) {
+    const parts = data.split('_');
+    const bookingId = parts[2];
+    const clientChatId = parseInt(parts[3]);
+    bot.editMessageText('Запис скасовано', { chat_id: chatId, message_id: query.message.message_id });
+    bot.sendMessage(clientChatId, 'Ваш запис скасовано. До зустрічі!');
+    bot.sendMessage(MASTER_ID, 'Клієнт скасував запис');
+    if (db) {
+      try {
+        await db.collection('bookings').doc(bookingId).update({ status: 'cancelled' });
+      } catch(e) { console.log('Cancel error:', e.message); }
+    }
   }
 
   bot.answerCallbackQuery(query.id);
