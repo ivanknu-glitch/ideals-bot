@@ -617,6 +617,16 @@ app.get('/', (req, res) => res.send('Ideals Bot is running!'));
 app.listen(PORT, () => console.log('Server on port ' + PORT));
 console.log('Bot started!');
 
+// Ігноруємо неважливі помилки Telegram
+process.on('unhandledRejection', (err) => {
+  if (err && err.message && (
+    err.message.includes('chat not found') ||
+    err.message.includes('message is not modified') ||
+    err.message.includes('bot was blocked')
+  )) return;
+  console.log('Unhandled error:', err.message);
+});
+
 // ===== НАГАДУВАННЯ =====
 const sentReminders = new Set(); // щоб не надсилати двічі
 
@@ -637,7 +647,7 @@ async function checkReminders() {
 
       // За 24 години (між 23:30 і 24:30 тобто 1410-1470 хв)
       const key24 = docSnap.id + '_24h';
-      if (diffMin > 1290 && diffMin < 1650 && !sentReminders.has(key24)) {
+      if (diffMin > 1350 && diffMin < 1470 && !sentReminders.has(key24)) {
         sentReminders.add(key24);
         const dateStr = b.date.split('-').reverse().slice(0,2).join('.');
 
