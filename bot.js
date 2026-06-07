@@ -131,7 +131,7 @@ async function linkClient(chatId, code, msg) {
     } catch(e) {}
   }
   bot.sendMessage(chatId,
-    realName + ', ваш код прийнято!\n\nТепер ви будете отримувати сповіщення про ваш запис',
+    '🌸 ' + realName + ', ваш код прийнято!\n\nТепер ви будете отримувати сповіщення про ваш запис 💅',
     {
       reply_markup: {
         keyboard: [
@@ -143,7 +143,7 @@ async function linkClient(chatId, code, msg) {
       }
     }
   );
-  bot.sendMessage(MASTER_ID, 'Клієнт прив\'язав код\n\n' + realName + '\n' + realPhone + '\n' + code + '\n@' + (username || 'без username'));
+  bot.sendMessage(MASTER_ID, '🔗 Клієнт прив\'язав код\n\n👤 ' + realName + '\n📱 ' + realPhone + '\n🔑 ' + code + '\n💬 @' + (username || 'без username'));
 }
 
 function showClientMenu(chatId, client) {
@@ -397,7 +397,7 @@ bot.on('message', async (msg) => {
     }
 
     bot.sendMessage(MASTER_ID,
-      'Запит на перенесення\n\n' + (client ? client.name : 'Клієнт') + '\n' + (client ? client.phone : '—') + '\nНова дата: ' + newDate + '\nНовий час: ' + time,
+      '🔄 Запит на перенесення\n\n👤 ' + (client ? client.name : 'Клієнт') + '\n📱 ' + (client ? client.phone : '—') + '\n📅 Нова дата: ' + newDate + '\n⏰ Новий час: ' + time,
       {
         reply_markup: {
           inline_keyboard: [[
@@ -440,7 +440,7 @@ bot.on('callback_query', async (query) => {
     const newDate = parts[3];
     const newTime = parts[4];
     bot.editMessageText('Перенесення підтверджено: ' + newDate + ' о ' + newTime, { chat_id: chatId, message_id: query.message.message_id });
-    bot.sendMessage(clientChatId, 'Запис перенесено!\n' + fmtDate(newDate) + ' о ' + newTime + '\n\nЧекаємо вас!');
+    bot.sendMessage(clientChatId, '🔄 Ваш запис перенесено!\n\n📅 ' + fmtDate(newDate) + ' о ' + newTime + '\n\nЧекаємо вас! 🌸');
     if (db) {
       try {
         // Якщо є конкретний bookingId — оновлюємо тільки його
@@ -469,8 +469,8 @@ bot.on('callback_query', async (query) => {
   if (data.startsWith('cancel_')) {
     const clientChatId = parseInt(data.split('_')[1]);
     bot.editMessageText('Запис скасовано', { chat_id: chatId, message_id: query.message.message_id });
-    bot.sendMessage(clientChatId, 'Ваш запис скасовано. До зустрічі!');
-    bot.sendMessage(MASTER_ID, 'Клієнт скасував запис');
+    bot.sendMessage(clientChatId, '✅ Ваш запис скасовано. До зустрічі! 🌸');
+    bot.sendMessage(MASTER_ID, '⚠️ Клієнт скасував запис');
     if (db) {
       try {
         const clientDoc = await db.collection('telegramClients').doc(String(clientChatId)).get();
@@ -527,8 +527,8 @@ bot.on('callback_query', async (query) => {
     const bookingId = parts[2];
     const clientChatId = parseInt(parts[3]);
     bot.editMessageText('Запис скасовано', { chat_id: chatId, message_id: query.message.message_id });
-    bot.sendMessage(clientChatId, 'Ваш запис скасовано. До зустрічі!');
-    bot.sendMessage(MASTER_ID, 'Клієнт скасував запис');
+    bot.sendMessage(clientChatId, '✅ Ваш запис скасовано. До зустрічі! 🌸');
+    bot.sendMessage(MASTER_ID, '⚠️ Клієнт скасував запис');
     if (db) {
       try {
         await db.collection('bookings').doc(bookingId).update({ status: 'cancelled' });
@@ -567,15 +567,15 @@ app.post('/new-booking', (req, res) => {
   const booking = req.body;
   const clientType = booking.clientType === 'new' ? 'Новий клієнт (з передоплатою)' : 'Постійний клієнт';
   bot.sendMessage(MASTER_ID,
-    'Новий запис!\n\n' +
-    booking.name + '\n' +
-    booking.phone + '\n' +
-    booking.services + '\n' +
-    fmtDate(booking.date) + ', ' + booking.time + '\n' +
-    booking.duration + '\n' +
-    booking.price + ' грн\n' +
+    '🌸 Новий запис!\n\n' +
+    '👤 ' + booking.name + '\n' +
+    '📱 ' + booking.phone + '\n' +
+    '💅 ' + booking.services + '\n' +
+    '📅 ' + fmtDate(booking.date) + ', ' + booking.time + '\n' +
+    '⏱ ' + booking.duration + '\n' +
+    '💰 ' + booking.price + ' грн\n' +
     clientType + '\n' +
-    'Код: ' + booking.code,
+    '🔑 Код: ' + booking.code,
     {
       reply_markup: {
         inline_keyboard: [[
@@ -603,11 +603,11 @@ app.post('/notify-client', async (req, res) => {
   }
   if (clientChatId) {
     if (type === 'confirmed') {
-      bot.sendMessage(clientChatId, 'Ваш запис підтверджено!\n\nНе забудьте про передоплату.');
+      bot.sendMessage(clientChatId, '✅ Ваш запис підтверджено! 🌸\n\nЧекаємо вас!');
     } else if (type === 'cancelled') {
-      bot.sendMessage(clientChatId, 'Ваш запис скасовано майстром.\n\nДля нового запису: https://ideals-nail.web.app');
+      bot.sendMessage(clientChatId, '❌ На жаль, ваш запис скасовано майстром.\n\nДля нового запису: https://ideals-nail.web.app 🌸');
     } else if (type === 'rescheduled') {
-      bot.sendMessage(clientChatId, 'Ваш запис перенесено!\n\n' + fmtDate(date) + ' о ' + time + '\n\nЧекаємо вас!');
+      bot.sendMessage(clientChatId, '🔄 Ваш запис перенесено! \n\n📅 ' + fmtDate(date) + ' о ' + time + '\n\nЧекаємо вас! 🌸');
     }
   }
   res.json({ success: true, notified: !!clientChatId });
