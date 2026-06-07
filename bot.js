@@ -616,3 +616,75 @@ app.post('/notify-client', async (req, res) => {
 app.get('/', (req, res) => res.send('Ideals Bot is running!'));
 app.listen(PORT, () => console.log('Server on port ' + PORT));
 console.log('Bot started!');
+
+// ===== НАГАДУВАННЯ =====
+const sentReminders = new Set(); // щоб не надсилати двічі
+
+async function checkReminders() {
+  if (!db) return;
+  try {
+    const now = new Date();
+    const snap = await db.collection('bookings')
+      .where('status', '!=', 'cancelled')
+      .get();
+
+    for (const docSnap of snap.docs) {
+      const b = docSnap.data();
+      if (!b.date || !b.time) continue;
+
+      const bookingTime = new Date(b.date + 'T' + b.time + ':00');
+      const diffMs = bookingTime - now;
+      const diffMin = diffMs / 60000;
+
+      // За 24 години (між 23:30 і 24:30 тобто 1410-1470 хв)
+      const key24 = docSnap.id + '_24h';
+      if (diffMin > 1350 && diffMin < 1470 && !sentReminders.has(key24)) {
+        sentReminders.add(key24);
+        const dateStr = b.date.split('-').reverse().slice(0,2).join('.');
+
+        // Клієнту
+        try {
+          const clientSnap = await db.collection('telegramClients').where('code', '==', b.code).get();
+          if (!clientSnap.empty) {
+            const clientId = clientSnap.docs[0].data().telegramId;
+            bot.sendMessage(clientId,
+              `🔔 Нагадування!\n\n📅 Завтра о ${b.time} — ${b.services}\n\nЧекаємо вас! 🌸`
+            );
+          }
+        } catch(e) {}
+
+
+
+        console.log('Reminder 24h sent:', b.name, b.date, b.time);
+      }
+
+      // За 1.5 години (між 80 і 100 хв)
+      const key15 = docSnap.id + '_1.5h';
+      if (diffMin > 70 && diffMin < 100 && !sentReminders.has(key15)) {
+        sentReminders.add(key15);
+
+        // Клієнту
+        try {
+          const clientSnap = await db.collection('telegramClients').where('code', '==', b.code).get();
+          if (!clientSnap.empty) {
+            const clientId = clientSnap.docs[0].data().telegramId;
+            bot.sendMessage(clientId,
+              `⏰ Нагадування!\n\nЧерез 1.5 години о ${b.time} — ${b.services}\n\nДо зустрічі! 🌸`
+            );
+          }
+        } catch(e) {}
+
+
+
+        console.log('Reminder 1.5h sent:', b.name, b.date, b.time);
+      }
+    }
+  } catch(e) {
+    console.log('Reminder check error:', e.message);
+  }
+}
+
+// Перевіряємо кожні 30 хвилин
+setInterval(checkReminders, 30 * 60 * 1000);
+// І одразу при старті
+setTimeout(checkReminders, 10000);
