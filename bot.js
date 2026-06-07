@@ -621,6 +621,7 @@ console.log('Bot started!');
 const sentReminders = new Set(); // щоб не надсилати двічі
 
 async function checkReminders() {
+  console.log("Checking reminders...", new Date().toISOString());
   if (!db) return;
   try {
     const now = new Date();
