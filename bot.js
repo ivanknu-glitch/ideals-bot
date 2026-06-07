@@ -621,7 +621,6 @@ console.log('Bot started!');
 const sentReminders = new Set(); // щоб не надсилати двічі
 
 async function checkReminders() {
-  console.log("Checking reminders...", new Date().toISOString());
   if (!db) return;
   try {
     const now = new Date();
@@ -635,7 +634,6 @@ async function checkReminders() {
       const bookingTime = new Date(b.date + 'T' + b.time + ':00');
       const diffMs = bookingTime - now;
       const diffMin = diffMs / 60000;
-      console.log("Booking:", b.date, b.time, "diffMin:", Math.round(diffMin));
 
       // За 24 години (між 23:30 і 24:30 тобто 1410-1470 хв)
       const key24 = docSnap.id + '_24h';
