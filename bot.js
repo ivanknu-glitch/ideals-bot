@@ -646,9 +646,9 @@ async function checkReminders() {
       const diffMs = bookingTime - now;
       const diffMin = diffMs / 60000;
 
-      // За 24 години (між 23:30 і 24:30 тобто 1410-1470 хв)
+      // За 24 години (між 23:55 і 24:05 тобто 1435-1445 хв)
       const key24 = docSnap.id + '_24h';
-      if (diffMin > 1350 && diffMin < 1470 && !sentReminders.has(key24)) {
+      if (diffMin > 1435 && diffMin < 1445 && !sentReminders.has(key24)) {
         sentReminders.add(key24);
         const dateStr = b.date.split('-').reverse().slice(0,2).join('.');
 
@@ -668,9 +668,9 @@ async function checkReminders() {
         console.log('Reminder 24h sent:', b.name, b.date, b.time);
       }
 
-      // За 1.5 години (між 80 і 100 хв)
+      // За 1.5 години (між 1:25 і 1:35 тобто 85-95 хв)
       const key15 = docSnap.id + '_1.5h';
-      if (diffMin > 70 && diffMin < 100 && !sentReminders.has(key15)) {
+      if (diffMin > 85 && diffMin < 95 && !sentReminders.has(key15)) {
         sentReminders.add(key15);
 
         // Клієнту
@@ -694,7 +694,7 @@ async function checkReminders() {
   }
 }
 
-// Перевіряємо кожні 30 хвилин
-setInterval(checkReminders, 30 * 60 * 1000);
+// Перевіряємо кожні 5 хвилин
+setInterval(checkReminders, 5 * 60 * 1000);
 // І одразу при старті
 setTimeout(checkReminders, 10000);
