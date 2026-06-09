@@ -466,7 +466,7 @@ bot.on('callback_query', async (query) => {
     if (clientChatId) bot.sendMessage(clientChatId, 'На жаль, перенесення неможливе. Зв\'яжіться з майстром.');
   }
 
-  if (data.startsWith('cancel_')) {
+  if (data.startsWith('cancel_') && !data.startsWith('cancel_booking_')) {
     const clientChatId = parseInt(data.split('_')[1]);
     bot.editMessageText('Запис скасовано', { chat_id: chatId, message_id: query.message.message_id });
     bot.sendMessage(clientChatId, '✅ Ваш запис скасовано. До зустрічі! 🌸');
