@@ -641,7 +641,8 @@ async function checkReminders() {
       if (!b.date || !b.time) continue;
       if (b.status === 'cancelled') continue;
 
-      const bookingTime = new Date(b.date + 'T' + b.time + ':00');
+      // Київ UTC+3 — додаємо зсув
+      const bookingTime = new Date(b.date + 'T' + b.time + ':00.000+03:00');
       const diffMs = bookingTime - now;
       const diffMin = diffMs / 60000;
 
