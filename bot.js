@@ -47,6 +47,13 @@ let userState = {};
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
+  // Парсимо рядок напряму без Date щоб уникнути timezone проблем
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const day = parseInt(parts[2]);
+    const month = parseInt(parts[1]) - 1;
+    return day + ' ' + MN_UA[month];
+  }
   const d = new Date(dateStr + 'T00:00:00+03:00');
   return d.getDate() + ' ' + MN_UA[d.getMonth()];
 }
