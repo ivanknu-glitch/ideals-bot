@@ -96,8 +96,10 @@ async function showClientBookings(chatId, client) {
     }
     const text = bookings.map(b => {
       const d = new Date(b.date + 'T00:00:00');
-      const status = b.status === 'confirmed' ? '' : '';
-      return status + ' ' + d.getDate() + ' ' + MN_UA[d.getMonth()] + ', ' + b.time + '\n' + b.services + '\n' + b.price + ' грн';
+      let statusLine = '';
+      if(b.status === 'new') statusLine = '⏳ Очікує підтвердження майстра\n';
+      else if(b.status === 'confirmed') statusLine = '✅ Підтверджено\n';
+      return statusLine + d.getDate() + ' ' + MN_UA[d.getMonth()] + ', ' + b.time + '\n' + (b.services||b.service||'') + '\n' + b.price + ' грн';
     }).join('\n\n');
     bot.sendMessage(chatId, 'Ваші записи:\n\n' + text);
   } catch(e) {
@@ -668,7 +670,7 @@ async function checkReminders() {
         console.log('Reminder 24h sent:', b.name, b.date, b.time);
       }
 
-      // За 1.5 години (між 1:25 і 1:35 тобто 85-95 хв)
+      // За 1.5 години (між 85 і 95 хв)
       const key15 = docSnap.id + '_1.5h';
       if (diffMin > 85 && diffMin < 95 && !sentReminders.has(key15)) {
         sentReminders.add(key15);
@@ -687,6 +689,30 @@ async function checkReminders() {
 
 
         console.log('Reminder 1.5h sent:', b.name, b.date, b.time);
+      }
+    }
+    // Автоскасування непідтверджених записів через 2 години
+    for (const docSnap of snap.docs) {
+      const b = docSnap.data();
+      if (b.status !== 'new') continue;
+      if (!b.createdAt) continue;
+      const created = new Date(b.createdAt);
+      const diffMs = now - created;
+      const diffMin = diffMs / 60000;
+      if (diffMin >= 120) {
+        try {
+          await db.collection('bookings').doc(docSnap.id).update({ status: 'cancelled' });
+          // Повідомляємо клієнта
+          const clientSnap = await db.collection('telegramClients').where('code', '==', b.code).get();
+          if (!clientSnap.empty) {
+            const clientId = clientSnap.docs[0].data().telegramId;
+            bot.sendMessage(clientId,
+              '❌ На жаль, майстер не підтвердив ваш запис на ' + fmtDate(b.date) + ' о ' + b.time + '.\n\n' +
+              'Для уточнень зверніться до майстра напряму: @Ideals_i'
+            );
+          }
+          console.log('Auto-cancelled booking:', docSnap.id, b.name);
+        } catch(e) { console.log('Auto-cancel error:', e.message); }
       }
     }
   } catch(e) {
