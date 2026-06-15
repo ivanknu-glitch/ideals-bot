@@ -47,7 +47,7 @@ let userState = {};
 
 function fmtDate(dateStr) {
   if (!dateStr) return '—';
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(dateStr + 'T00:00:00+03:00');
   return d.getDate() + ' ' + MN_UA[d.getMonth()];
 }
 
@@ -95,7 +95,7 @@ async function showClientBookings(chatId, client) {
       return;
     }
     const text = bookings.map(b => {
-      const d = new Date(b.date + 'T00:00:00');
+      const d = new Date(b.date + 'T00:00:00+03:00');
       let statusLine = '';
       if(b.status === 'new') statusLine = '⏳ Очікує підтвердження майстра\n';
       else if(b.status === 'confirmed') statusLine = '✅ Підтверджено\n';
