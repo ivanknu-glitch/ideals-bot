@@ -422,17 +422,45 @@ bot.on('callback_query', async (query) => {
 
   if (data.startsWith('confirm_')) {
     const firebaseId = data.replace('confirm_', '');
-    bot.editMessageText('Запис підтверджено', { chat_id: chatId, message_id: query.message.message_id });
+    bot.editMessageText('✅ Запис підтверджено', { chat_id: chatId, message_id: query.message.message_id });
     if (db && firebaseId !== 'none') {
-      try { await db.collection('bookings').doc(firebaseId).update({ status: 'confirmed' }); } catch(e) {}
+      try {
+        await db.collection('bookings').doc(firebaseId).update({ status: 'confirmed' });
+        // Повідомляємо клієнта
+        const bookingDoc = await db.collection('bookings').doc(firebaseId).get();
+        if (bookingDoc.exists) {
+          const b = bookingDoc.data();
+          const clientSnap = await db.collection('telegramClients').where('code', '==', b.code).get();
+          if (!clientSnap.empty) {
+            const clientId = clientSnap.docs[0].data().telegramId;
+            bot.sendMessage(clientId,
+              '✅ Ваш запис підтверджено! 🌸\n\n📅 ' + fmtDate(b.date) + ' о ' + b.time + '\n💅 ' + (b.services||b.service||'') + '\n\nЧекаємо вас!'
+            );
+          }
+        }
+      } catch(e) { console.log('confirm error:', e.message); }
     }
   }
 
   if (data.startsWith('reject_')) {
     const firebaseId = data.replace('reject_', '');
-    bot.editMessageText('Запис відхилено', { chat_id: chatId, message_id: query.message.message_id });
+    bot.editMessageText('❌ Запис відхилено', { chat_id: chatId, message_id: query.message.message_id });
     if (db && firebaseId !== 'none') {
-      try { await db.collection('bookings').doc(firebaseId).update({ status: 'cancelled' }); } catch(e) {}
+      try {
+        await db.collection('bookings').doc(firebaseId).update({ status: 'cancelled' });
+        // Повідомляємо клієнта
+        const bookingDoc = await db.collection('bookings').doc(firebaseId).get();
+        if (bookingDoc.exists) {
+          const b = bookingDoc.data();
+          const clientSnap = await db.collection('telegramClients').where('code', '==', b.code).get();
+          if (!clientSnap.empty) {
+            const clientId = clientSnap.docs[0].data().telegramId;
+            bot.sendMessage(clientId,
+              '❌ На жаль, майстер не може прийняти вас ' + fmtDate(b.date) + ' о ' + b.time + '.\n\nДля уточнень зверніться до майстра: @Ideals_i\n\nЗаписатись на інший час: https://ideals-nail.web.app 🌸'
+            );
+          }
+        }
+      } catch(e) { console.log('reject error:', e.message); }
     }
   }
 
