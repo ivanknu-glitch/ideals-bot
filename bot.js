@@ -398,12 +398,13 @@ bot.on('message', async (msg) => {
       } catch(e) { console.log('Slot check error:', e.message); }
     }
 
+    const bookingId = userState[chatId] && userState[chatId].data && userState[chatId].data.bookingId || 'none';
     bot.sendMessage(MASTER_ID,
       '🔄 Запит на перенесення\n\n👤 ' + (client ? client.name : 'Клієнт') + '\n📱 ' + (client ? client.phone : '—') + '\n📅 Нова дата: ' + newDate + '\n⏰ Новий час: ' + time,
       {
         reply_markup: {
           inline_keyboard: [[
-            { text: 'Підтвердити', callback_data: `res_ok_${chatId}_${newDate}_${time}` },
+            { text: 'Підтвердити', callback_data: `res_ok_${chatId}_${newDate}_${time}_${bookingId}` },
             { text: 'Відхилити', callback_data: `res_no_${chatId}` }
           ]]
         }
@@ -469,21 +470,23 @@ bot.on('callback_query', async (query) => {
     const clientChatId = parseInt(parts[2]);
     const newDate = parts[3];
     const newTime = parts[4];
+    const bookingIdFromData = parts[5] && parts[5] !== 'none' ? parts[5] : null;
     bot.editMessageText('Перенесення підтверджено: ' + newDate + ' о ' + newTime, { chat_id: chatId, message_id: query.message.message_id });
     bot.sendMessage(clientChatId, '🔄 Ваш запис перенесено!\n\n📅 ' + fmtDate(newDate) + ' о ' + newTime + '\n\nЧекаємо вас! 🌸');
     if (db) {
       try {
-        // Якщо є конкретний bookingId — оновлюємо тільки його
-        const bookingId = userState[clientChatId] && userState[clientChatId].data && userState[clientChatId].data.bookingId;
-        if (bookingId) {
-          await db.collection('bookings').doc(bookingId).update({ date: newDate, time: newTime, status: 'confirmed' });
+        if (bookingIdFromData) {
+          // Маємо точний bookingId — оновлюємо тільки його
+          await db.collection('bookings').doc(bookingIdFromData).update({ date: newDate, time: newTime, status: 'confirmed' });
         } else {
+          // Fallback — шукаємо за кодом клієнта
           const clientDoc = await db.collection('telegramClients').doc(String(clientChatId)).get();
           if (clientDoc.exists) {
             const code = clientDoc.data().code;
             const snap = await db.collection('bookings').where('code', '==', code).where('status', '!=', 'cancelled').get();
-            const firstDoc = snap.docs[0];
-            if (firstDoc) await db.collection('bookings').doc(firstDoc.id).update({ date: newDate, time: newTime, status: 'confirmed' });
+            // Сортуємо по даті і беремо найближчий
+            const sorted = snap.docs.sort((a,b) => a.data().date > b.data().date ? 1 : -1);
+            if (sorted[0]) await db.collection('bookings').doc(sorted[0].id).update({ date: newDate, time: newTime, status: 'confirmed' });
           }
         }
       } catch(e) { console.log('Reschedule Firebase error:', e.message); }
