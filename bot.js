@@ -102,11 +102,10 @@ async function showClientBookings(chatId, client) {
       return;
     }
     const text = bookings.map(b => {
-      const d = new Date(b.date + 'T00:00:00+03:00');
       let statusLine = '';
       if(b.status === 'new') statusLine = '⏳ Очікує підтвердження майстра\n';
       else if(b.status === 'confirmed') statusLine = '✅ Підтверджено\n';
-      return statusLine + d.getDate() + ' ' + MN_UA[d.getMonth()] + ', ' + b.time + '\n' + (b.services||b.service||'') + '\n' + b.price + ' грн';
+      return statusLine + fmtDate(b.date) + ', ' + b.time + '\n' + (b.services||b.service||'') + '\n' + b.price + ' грн';
     }).join('\n\n');
     bot.sendMessage(chatId, 'Ваші записи:\n\n' + text);
   } catch(e) {
